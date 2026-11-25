@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AccessAble</title>
+<meta name="description" content="AccessAble helps people see how the web feels with a disability, and gives builders the tools to fix it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Lexend:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Layout concept: one long reading column with a persistent display-settings bar,
+   followed by four working tools (simulator, contrast checker, barrier reporter, builder checklist). */
+:root{
+  --bg:#f3f5f8; --surface:#ffffff; --ink:#0e1726; --muted:#44505f; --line:#c9d1db;
+  --accent:#0a4fd6; --accent-ink:#ffffff; --signal:#ffd23f; --signal-ink:#1a1400;
+  --good:#0b7a3b; --bad:#b3261e; --focus:#0a4fd6;
+  --font-body:"Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+  --font-read:var(--font-body);
+  --scale:1;
+  --gap:clamp(1rem,2.5vw,1.75rem);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0b111b; --surface:#131c2a; --ink:#eef2f7; --muted:#a9b5c4; --line:#2c394d;
+    --accent:#7aa7ff; --accent-ink:#06142e; --good:#4cd48a; --bad:#ff8a80; --focus:#9dbfff;
+    color-scheme:dark;
+  }
+}
+:root.hc{
+  --bg:#000; --surface:#000; --ink:#fff; --muted:#fff; --line:#fff;
+  --accent:#ffd23f; --accent-ink:#000; --good:#6dff9f; --bad:#ff9b94; --focus:#ffd23f;
+  color-scheme:dark;
+}
+:root.dys{ --font-read:"Lexend","Atkinson Hyperlegible",system-ui,sans-serif; }
+
+*{box-sizing:border-box}
+html{font-size:calc(100% * var(--scale)); scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--font-read); font-size:1.0625rem; line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+:root.sp body{ line-height:2; letter-spacing:.04em; word-spacing:.12em }
+:root.dys body{ letter-spacing:.03em }
+:root.rm *{ animation:none !important; transition:none !important; scroll-behavior:auto !important }
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} *{animation:none !important; transition:none !important} }
+
+.wrap{ max-width:68rem; margin-inline:auto }
+h1,h2,h3{ font-family:var(--font-body); line-height:1.15; margin:0 0 .6em; text-wrap:balance }
+h1{ font-size:clamp(2.2rem,6vw,3.9rem); letter-spacing:-.02em }
+h2{ font-size:clamp(1.6rem,3.6vw,2.3rem); letter-spacing:-.01em }
+h3{ font-size:1.2rem }
+p{ margin:0 0 1em; max-width:65ch }
+a{ color:var(--accent); text-underline-offset:.2em }
+:focus-visible{ outline:3px solid var(--focus); outline-offset:3px; border-radius:4px }
+.skip{ position:absolute; left:-999px; top:0; background:var(--signal); color:var(--signal-ink); padding:.7rem 1rem; z-index:100; font-weight:700 }
+.skip:focus{ left:1rem; top:1rem }
+.eyebrow{ font-size:.85rem; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); font-weight:700; margin-bottom:.8rem }
+.lede{ font-size:1.25rem; color:var(--muted); max-width:56ch }
+
+/* Display settings bar */
+.settings{ background:var(--surface); border-bottom:1px solid var(--line) }
+.settings .wrap{ display:flex; flex-wrap:wrap; align-items:center; gap:.5rem .75rem; padding-block:.7rem }
+.settings strong{ font-size:.9rem; margin-right:.25rem }
+.btn{
+  font:inherit; font-size:.95rem; font-weight:700; cursor:pointer;
+  background:var(--surface); color:var(--ink); border:2px solid var(--ink);
+  border-radius:8px; padding:.45rem .8rem; min-height:44px; min-width:44px;
+}
+.btn:hover{ background:var(--bg) }
+.btn[aria-pressed="true"]{ background:var(--ink); color:var(--bg) }
+.btn.primary{ background:var(--accent); color:var(--accent-ink); border-color:var(--accent) }
+.btn.primary:hover{ filter:brightness(1.08) }
+:root.hc .btn{ border-color:#fff }
+:root.hc .btn[aria-pressed="true"]{ background:#ffd23f; color:#000; border-color:#ffd23f }
+.btn-row{ display:flex; flex-wrap:wrap; gap:.5rem }
+
+header.site .wrap{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.75rem 1.5rem; padding-block:1rem }
+.brand{ font-family:var(--font-body); font-weight:700; font-size:1.35rem; text-decoration:none; color:var(--ink); display:flex; align-items:center; gap:.6rem }
+.brand-mark{ width:2rem; height:2rem; border-radius:50%; background:var(--signal); color:var(--signal-ink); display:grid; place-items:center; font-size:1.1rem }
+nav ul{ list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:.25rem 1.1rem }
+nav a{ color:var(--ink); font-weight:700; text-decoration:none; padding:.4rem 0; display:inline-block }
+nav a:hover{ text-decoration:underline }
+
+/* Hero */
+.hero{ padding-block:clamp(2.5rem,7vw,5.5rem) clamp(2rem,5vw,3.5rem) }
+.hero-grid{ display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr); gap:var(--gap); align-items:center }
+.hero h1 mark{ background:var(--signal); color:var(--signal-ink); padding:0 .2em; border-radius:.15em; box-decoration-break:clone; -webkit-box-decoration-break:clone }
+.hero-card{ background:var(--surface); border:2px solid var(--ink); border-radius:16px; padding:1.4rem; min-width:0 }
+.hero-card h2{ font-size:1.15rem; margin-bottom:.8rem }
+.hero-card ul{ margin:0; padding-left:1.2rem } .hero-card li{ margin-bottom:.45rem }
+.cta-row{ display:flex; flex-wrap:wrap; gap:.75rem; margin-top:1.4rem }
+a.btn{ text-decoration:none; display:inline-flex; align-items:center }
+
+section{ padding-block:clamp(2.2rem,5vw,4rem); border-top:1px solid var(--line) }
+.panel{ background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:clamp(1rem,2.5vw,1.6rem); min-width:0 }
+
+/* Stats */
+.stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr)); gap:var(--gap); margin-top:1.5rem }
+.stat{ background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:1.3rem; min-width:0 }
+.stat b{ display:block; font-family:var(--font-body); font-size:clamp(2.2rem,5vw,3.1rem); line-height:1; margin-bottom:.4rem; font-variant-numeric:tabular-nums }
+.stat span{ color:var(--muted); display:block }
+.src{ font-size:.85rem; color:var(--muted); margin-top:1rem }
+
+/* Tabs */
+.tabs [role="tablist"]{ display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1rem }
+.tabs [role="tab"]{ font:inherit; font-weight:700; cursor:pointer; padding:.55rem 1rem; min-height:44px; border-radius:999px; border:2px solid var(--ink); background:var(--surface); color:var(--ink) }
+.tabs [role="tab"][aria-selected="true"]{ background:var(--ink); color:var(--bg) }
+:root.hc .tabs [role="tab"][aria-selected="true"]{ background:#ffd23f; color:#000; border-color:#ffd23f }
+.two{ display:grid; grid-template-columns:repeat(auto-fit,minmax(16rem,1fr)); gap:var(--gap) }
+.two h3{ margin-bottom:.5rem }
+.two ul{ margin:0; padding-left:1.2rem } .two li{ margin-bottom:.5rem }
+
+/* Simulator */
+.sim{ display:grid; grid-template-columns:minmax(0,16rem) minmax(0,1fr); gap:var(--gap) }
+fieldset{ border:0; margin:0; padding:0; min-width:0 }
+legend{ font-weight:700; margin-bottom:.6rem; padding:0 }
+.radio{ display:flex; align-items:center; gap:.6rem; padding:.55rem .7rem; border:2px solid var(--line); border-radius:10px; margin-bottom:.5rem; cursor:pointer; min-height:44px }
+.radio:has(input:checked){ border-color:var(--accent); background:var(--bg) }
+.radio input{ width:1.2rem; height:1.2rem; accent-color:var(--accent); flex:none }
+.stage{ border:2px dashed var(--line); border-radius:14px; padding:1rem; overflow:hidden; min-width:0 }
+.stage-inner{ transition:filter .25s; background:#ffffff; color:#14202e; border-radius:12px; padding:1.1rem; border:1px solid #ccd5df }
+.stage-inner h3{ margin-bottom:.2rem; color:#14202e }
+.stage-inner p{ color:#3b4756; margin-bottom:.8rem }
+.route{ display:flex; align-items:center; gap:.8rem; padding:.7rem 0; border-top:1px solid #dfe5ec; flex-wrap:wrap }
+.route .name{ flex:1 1 9rem; font-weight:700 }
+.dot{ width:1.4rem; height:1.4rem; border-radius:50%; flex:none; display:inline-block }
+.dot.run{ background:#1f9d4c } .dot.stop{ background:#d13a30 } .dot.late{ background:#e3a21a }
+.state{ display:none; font-size:.9rem; font-weight:700 }
+.fixed .state{ display:inline }
+.fixed .dot.run{ border-radius:50% } .fixed .dot.stop{ border-radius:3px } .fixed .dot.late{ border-radius:0; clip-path:polygon(50% 0,100% 100%,0 100%) }
+.stage-inner .fakebtn{ display:inline-block; background:#0a4fd6; color:#fff; padding:.55rem 1rem; border-radius:8px; font-weight:700; margin-top:.6rem }
+.note{ margin-top:.9rem; font-size:.95rem; color:var(--muted) }
+
+/* Contrast */
+.contrast{ display:grid; grid-template-columns:minmax(0,18rem) minmax(0,1fr); gap:var(--gap) }
+label.field{ display:block; font-weight:700; margin-bottom:.9rem }
+label.field span.hint{ font-weight:400; color:var(--muted); font-size:.9rem; display:block }
+input[type="color"]{ width:100%; height:3rem; border:2px solid var(--ink); border-radius:8px; background:var(--surface); padding:.15rem; cursor:pointer; margin-top:.3rem }
+input[type="text"],select,textarea{
+  font:inherit; width:100%; margin-top:.3rem; padding:.65rem .75rem; border:2px solid var(--ink);
+  border-radius:8px; background:var(--surface); color:var(--ink); min-height:44px;
+}
+textarea{ min-height:7rem; resize:vertical }
+.ratio{ font-family:var(--font-body); font-size:clamp(2.4rem,6vw,3.6rem); font-weight:700; line-height:1; font-variant-numeric:tabular-nums }
+.badges{ display:flex; flex-wrap:wrap; gap:.5rem; margin:.9rem 0 }
+.badge{ padding:.35rem .7rem; border-radius:999px; font-weight:700; font-size:.9rem; border:2px solid currentColor }
+.badge.pass{ color:var(--good) } .badge.fail{ color:var(--bad) }
+.sample{ border-radius:12px; padding:1.1rem; border:1px solid var(--line); overflow-wrap:anywhere }
+.sample .big{ font-size:1.5rem; font-weight:700; margin:0 0 .3rem } .sample p{ margin:0 }
+
+/* Reports */
+.reports{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:var(--gap) }
+.report-list{ list-style:none; margin:0; padding:0; display:grid; gap:.75rem }
+.report-list li{ border:1px solid var(--line); border-radius:12px; padding:.9rem 1rem; background:var(--bg); min-width:0; overflow-wrap:anywhere }
+.report-list .meta{ font-size:.85rem; color:var(--muted); margin-bottom:.3rem }
+.report-list .rm-btn{ margin-top:.5rem; min-height:44px }
+.empty{ color:var(--muted); border:2px dashed var(--line); border-radius:12px; padding:1.1rem }
+.status{ min-height:1.6em; font-weight:700; color:var(--good); margin-top:.6rem }
+
+/* Checklist */
+.checks{ list-style:none; padding:0; margin:0 0 1rem; display:grid; gap:.6rem }
+.checks label{ display:flex; gap:.8rem; align-items:flex-start; padding:.8rem 1rem; border:1px solid var(--line); border-radius:12px; background:var(--surface); cursor:pointer; min-height:44px }
+.checks input{ width:1.3rem; height:1.3rem; margin-top:.2rem; accent-color:var(--accent); flex:none }
+.checks b{ display:block } .checks small{ color:var(--muted); font-size:.92rem }
+progress{ width:100%; height:1rem; accent-color:var(--accent) }
+
+/* Read aloud highlight */
+.speaking{ outline:3px solid var(--signal); outline-offset:4px; background:color-mix(in srgb,var(--signal) 28%,transparent); border-radius:4px }
+
+footer{ border-top:1px solid var(--line); padding-block:2rem 3rem; color:var(--muted) }
+footer ul{ padding-left:1.1rem } footer li{ margin-bottom:.35rem }
+.vh{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap }
+
+@media (max-width:780px){
+  .hero-grid,.sim,.contrast,.reports{ grid-template-columns:minmax(0,1fr) }
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+
+<!-- Hidden SVG filters used by the vision simulator -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <filter id="f-protanopia"><feColorMatrix type="matrix" values="0.567 0.433 0 0 0  0.558 0.442 0 0 0  0 0.242 0.758 0 0  0 0 0 1 0"/></filter>
+    <filter id="f-deuteranopia"><feColorMatrix type="matrix" values="0.625 0.375 0 0 0  0.7 0.3 0 0 0  0 0.3 0.7 0 0  0 0 0 1 0"/></filter>
+    <filter id="f-tritanopia"><feColorMatrix type="matrix" values="0.95 0.05 0 0 0  0 0.433 0.567 0 0  0 0.475 0.525 0 0  0 0 0 1 0"/></filter>
+    <filter id="f-mono"><feColorMatrix type="matrix" values="0.299 0.587 0.114 0 0  0.299 0.587 0.114 0 0  0.299 0.587 0.114 0 0  0 0 0 1 0"/></filter>
+  </defs>
+</svg>
+
+<div class="settings" role="region" aria-label="Display settings">
+  <div class="wrap">
+    <strong id="settings-label">Make this page easier to use:</strong>
+    <div class="btn-row" role="group" aria-labelledby="settings-label">
+      <button class="btn" type="button" id="size-down" aria-label="Smaller text">A&minus;</button>
+      <button class="btn" type="button" id="size-up" aria-label="Larger text">A+</button>
+      <button class="btn" type="button" data-pref="hc" aria-pressed="false">High contrast</button>
+      <button class="btn" type="button" data-pref="dys" aria-pressed="false">Easy-read font</button>
+      <button class="btn" type="button" data-pref="sp" aria-pressed="false">Wide spacing</button>
+      <button class="btn" type="button" data-pref="rm" aria-pressed="false">Stop motion</button>
+      <button class="btn" type="button" id="read-btn" aria-pressed="false">Read aloud</button>
+      <button class="btn" type="button" id="reset-btn">Reset</button>
+    </div>
+  </div>
+</div>
+
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true">&#9679;</span> AccessAble</a>
+    <nav aria-label="Main">
+      <ul>
+        <li><a href="#problem">The problem</a></li>
+        <li><a href="#barriers">Barriers</a></li>
+        <li><a href="#simulator">Simulator</a></li>
+        <li><a href="#contrast">Contrast checker</a></li>
+        <li><a href="#report">Report a barrier</a></li>
+        <li><a href="#build">For builders</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <div class="wrap" id="top">
+
+    <div class="hero">
+      <div class="hero-grid">
+        <div>
+          <p class="eyebrow">Digital inclusion project</p>
+          <h1>A web that <mark>everyone</mark> can use.</h1>
+          <p class="lede">Websites, forms and apps lock out millions of people who are blind, deaf, have limited movement or process information differently. AccessAble shows what that feels like and gives you the tools to fix it.</p>
+          <div class="cta-row">
+            <a class="btn primary" href="#simulator">Try the simulator</a>
+            <a class="btn" href="#report">Report a barrier</a>
+          </div>
+        </div>
+        <aside class="hero-card" aria-labelledby="hero-card-title">
+          <h2 id="hero-card-title">What you can do here</h2>
+          <ul>
+            <li>See a page the way a colour-blind or low-vision person sees it.</li>
+            <li>Check if your text colours are readable (WCAG).</li>
+            <li>Log a barrier you ran into, with who it affects.</li>
+            <li>Work through a builder checklist and save your progress.</li>
+            <li>Change text size, contrast and font in the bar above.</li>
+          </ul>
+        </aside>
+      </div>
+    </div>
+
+    <section id="problem" aria-labelledby="problem-h">
+      <p class="eyebrow">The problem</p>
+      <h2 id="problem-h">Inaccessible design shuts people out of school, work and public services.</h2>
+      <p>When a button has no label, a video has no captions or a form needs a mouse, a person is stopped. It is rarely on purpose. It is usually because nobody tested for it.</p>
+      <div class="stats">
+        <div class="stat"><b>1 in 6</b><span>people worldwide live with a significant disability (about 1.3 billion).</span></div>
+        <div class="stat"><b>~95%</b><span>of the top one million home pages have detectable accessibility failures.</span></div>
+        <div class="stat"><b>1 in 12</b><span>men have some form of colour vision deficiency.</span></div>
+      </div>
+      <p class="src">Sources: World Health Organization, Global report on health equity for persons with disabilities (2022); WebAIM Million annual analysis; Colour Blind Awareness.</p>
+    </section>
+
+    <section id="barriers" aria-labelledby="barriers-h">
+      <p class="eyebrow">Barriers and fixes</p>
+      <h2 id="barriers-h">Different people hit different walls.</h2>
+      <div class="tabs panel">
+        <div role="tablist" aria-label="Type of disability">
+          <button role="tab" id="tab-vis" aria-controls="panel-vis" aria-selected="true">Vision</button>
+          <button role="tab" id="tab-hear" aria-controls="panel-hear" aria-selected="false" tabindex="-1">Hearing</button>
+          <button role="tab" id="tab-motor" aria-controls="panel-motor" aria-selected="false" tabindex="-1">Movement</button>
+          <button role="tab" id="tab-cog" aria-controls="panel-cog" aria-selected="false" tabindex="-1">Learning and attention</button>
+        </div>
+
+        <div role="tabpanel" id="panel-vis" aria-labelledby="tab-vis" class="two">
+          <div><h3>What goes wrong</h3><ul>
+            <li>Images with no text description are invisible to screen readers.</li>
+            <li>Light grey text on white cannot be read by people with low vision.</li>
+            <li>Status shown only by red or green is lost to colour-blind users.</li>
+            <li>Pages that break when zoomed to 200%.</li></ul></div>
+          <div><h3>What fixes it</h3><ul>
+            <li>Write meaningful <code>alt</code> text, and empty alt for decoration.</li>
+            <li>Keep text contrast at 4.5:1 or higher.</li>
+            <li>Add text or shapes next to colour.</li>
+            <li>Use relative units so text resizes.</li></ul></div>
+        </div>
+
+        <div role="tabpanel" id="panel-hear" aria-labelledby="tab-hear" class="two" hidden>
+          <div><h3>What goes wrong</h3><ul>
+            <li>Videos without captions.</li>
+            <li>Audio-only alerts and voice-only help lines.</li>
+            <li>Sign language users facing long written forms with no plain-language option.</li></ul></div>
+          <div><h3>What fixes it</h3><ul>
+            <li>Add accurate captions and transcripts.</li>
+            <li>Show a visual cue for every sound.</li>
+            <li>Offer chat, text or email beside phone support.</li></ul></div>
+        </div>
+
+        <div role="tabpanel" id="panel-motor" aria-labelledby="tab-motor" class="two" hidden>
+          <div><h3>What goes wrong</h3><ul>
+            <li>Menus that only open on mouse hover.</li>
+            <li>Tiny tap targets that are hard to hit with a tremor.</li>
+            <li>Timed forms that expire before someone using a switch device can finish.</li></ul></div>
+          <div><h3>What fixes it</h3><ul>
+            <li>Make everything work with the keyboard, in a logical order.</li>
+            <li>Keep targets at least 44 by 44 pixels.</li>
+            <li>Let people extend or turn off time limits.</li></ul></div>
+        </div>
+
+        <div role="tabpanel" id="panel-cog" aria-labelledby="tab-cog" class="two" hidden>
+          <div><h3>What goes wrong</h3><ul>
+            <li>Dense paragraphs and jargon.</li>
+            <li>Flashing or auto-playing content that pulls attention away or triggers seizures.</li>
+            <li>Error messages that say "Invalid input" and nothing more.</li></ul></div>
+          <div><h3>What fixes it</h3><ul>
+            <li>Use short sentences and plain words.</li>
+            <li>Give people control: pause, stop, hide motion.</li>
+            <li>Say what went wrong and how to fix it.</li></ul></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="simulator" aria-labelledby="sim-h">
+      <p class="eyebrow">Simulator</p>
+      <h2 id="sim-h">See a bus app the way others do.</h2>
+      <p>Pick a condition. Notice how the three route statuses become hard to tell apart when colour is the only clue. Then press the fix button.</p>
+      <div class="sim panel">
+        <fieldset>
+          <legend>Vision condition</legend>
+          <label class="radio"><input type="radio" name="vision" value="none" checked> Typical vision</label>
+          <label class="radio"><input type="radio" name="vision" value="url(#f-protanopia)"> Protanopia (red-blind)</label>
+          <label class="radio"><input type="radio" name="vision" value="url(#f-deuteranopia)"> Deuteranopia (green-blind)</label>
+          <label class="radio"><input type="radio" name="vision" value="url(#f-tritanopia)"> Tritanopia (blue-blind)</label>
+          <label class="radio"><input type="radio" name="vision" value="url(#f-mono)"> No colour at all</label>
+          <label class="radio"><input type="radio" name="vision" value="blur(3px) contrast(.8)"> Blurred, low vision</label>
+          <button class="btn primary" type="button" id="fix-btn" aria-pressed="false">Add text and shapes</button>
+        </fieldset>
+        <div class="stage">
+          <div class="stage-inner" id="sim-stage" role="img" aria-label="Sample bus app showing three routes with coloured status dots. Route 12 is running, Route 7 is stopped, Route 3 is late.">
+            <h3>Peshawar City Bus</h3>
+            <p>Live route status</p>
+            <div class="route"><span class="name">Route 12 &middot; Saddar</span><span class="dot run"></span><span class="state">Running</span></div>
+            <div class="route"><span class="name">Route 7 &middot; University Town</span><span class="dot stop"></span><span class="state">Stopped</span></div>
+            <div class="route"><span class="name">Route 3 &middot; Hayatabad</span><span class="dot late"></span><span class="state">Late</span></div>
+            <span class="fakebtn">Plan my trip</span>
+          </div>
+          <p class="note" id="sim-note">Colour is the only way to tell these statuses apart.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="contrast" aria-labelledby="contrast-h">
+      <p class="eyebrow">Tool</p>
+      <h2 id="contrast-h">Is your text readable?</h2>
+      <p>Pick a text colour and a background. The ratio follows the WCAG 2 formula.</p>
+      <div class="contrast panel">
+        <div>
+          <label class="field" for="fg">Text colour <input id="fg" type="color" value="#6b7785"></label>
+          <label class="field" for="bg">Background colour <input id="bg" type="color" value="#ffffff"></label>
+          <button class="btn" type="button" id="swap">Swap colours</button>
+        </div>
+        <div>
+          <div class="ratio" id="ratio" aria-live="polite">0:1</div>
+          <div class="badges" id="badges"></div>
+          <div class="sample" id="sample">
+            <p class="big">Large text sample</p>
+            <p>Regular text sample. Buses leave every ten minutes from the main stand.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="report" aria-labelledby="report-h">
+      <p class="eyebrow">Community</p>
+      <h2 id="report-h">Report a barrier you ran into.</h2>
+      <p>Describe a website, app or place that was hard to use. Reports are saved in this browser only, so you can keep a log or copy it into an email to the site owner.</p>
+      <div class="reports">
+        <form class="panel" id="report-form" novalidate>
+          <label class="field" for="r-where">Where did it happen? <span class="hint">Website address, app or place</span>
+            <input id="r-where" type="text" required autocomplete="off"></label>
+          <label class="field" for="r-type">Who is affected?
+            <select id="r-type">
+              <option>Blind or low vision</option>
+              <option>Deaf or hard of hearing</option>
+              <option>Limited movement</option>
+              <option>Learning, memory or attention</option>
+              <option>Other or several groups</option>
+            </select></label>
+          <label class="field" for="r-what">What was the problem? <span class="hint">What you tried, and what stopped you</span>
+            <textarea id="r-what" required></textarea></label>
+          <button class="btn primary" type="submit">Save report</button>
+          <p class="status" id="r-status" role="status"></p>
+        </form>
+        <div class="panel">
+          <h3>Your saved reports <span id="r-count" class="vh"></span></h3>
+          <ul class="report-list" id="report-list"></ul>
+          <div class="btn-row" style="margin-top:1rem">
+            <button class="btn" type="button" id="copy-reports">Copy all as text</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="build" aria-labelledby="build-h">
+      <p class="eyebrow">For builders</p>
+      <h2 id="build-h">Eight checks before you ship.</h2>
+      <div class="panel">
+        <ul class="checks" id="checks"></ul>
+        <label for="progress"><strong id="progress-text">0 of 8 done</strong></label>
+        <progress id="progress" max="8" value="0"></progress>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>AccessAble</strong> was built for the Replit Buildathon on the theme of social impact. It is a static page with no tracking. Display settings, reports and checklist progress stay in your browser.</p>
+    <p>Learn more:</p>
+    <ul>
+      <li><a href="https://www.w3.org/WAI/standards-guidelines/wcag/" target="_blank" rel="noopener">WCAG guidelines (W3C)</a></li>
+      <li><a href="https://www.who.int/news-room/fact-sheets/detail/disability-and-health" target="_blank" rel="noopener">Disability and health (WHO)</a></li>
+      <li><a href="https://webaim.org/projects/million/" target="_blank" rel="noopener">The WebAIM Million</a></li>
+    </ul>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var root = document.documentElement;
+  var $ = function(s, c){ return (c||document).querySelector(s); };
+  var $$ = function(s, c){ return Array.prototype.slice.call((c||document).querySelectorAll(s)); };
+
+  function load(key, fallback){
+    try{ var v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; }
+  }
+  function store(key, val){
+    try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
+  }
+
+  /* ---------- Display settings ---------- */
+  var PREFS_KEY = "accessable.prefs.v1";
+  var defaults = { scale:1, hc:false, dys:false, sp:false, rm:false };
+  var prefs = Object.assign({}, defaults, load(PREFS_KEY, {}));
+
+  function applyPrefs(){
+    root.style.setProperty("--scale", prefs.scale);
+    ["hc","dys","sp","rm"].forEach(function(k){ root.classList.toggle(k, !!prefs[k]); });
+    $$("[data-pref]").forEach(function(b){ b.setAttribute("aria-pressed", String(!!prefs[b.dataset.pref])); });
+    $("#size-down").disabled = prefs.scale <= 0.9;
+    $("#size-up").disabled = prefs.scale >= 1.6;
+  }
+  $$("[data-pref]").forEach(function(b){
+    b.addEventListener("click", function(){ prefs[b.dataset.pref] = !prefs[b.dataset.pref]; store(PREFS_KEY, prefs); applyPrefs(); });
+  });
+  $("#size-up").addEventListener("click", function(){ prefs.scale = Math.min(1.6, Math.round((prefs.scale + 0.1)*10)/10); store(PREFS_KEY, prefs); applyPrefs(); });
+  $("#size-down").addEventListener("click", function(){ prefs.scale = Math.max(0.9, Math.round((prefs.scale - 0.1)*10)/10); store(PREFS_KEY, prefs); applyPrefs(); });
+  $("#reset-btn").addEventListener("click", function(){ prefs = Object.assign({}, defaults); store(PREFS_KEY, prefs); stopReading(); applyPrefs(); });
+  applyPrefs();
+
+  /* ---------- Read aloud ---------- */
+  var synth = window.speechSynthesis;
+  var readBtn = $("#read-btn");
+  var queue = [], qi = 0, reading = false, current = null;
+
+  function clearHighlight(){ if(current){ current.classList.remove("speaking"); current = null; } }
+  function stopReading(){
+    reading = false;
+    if(synth) synth.cancel();
+    clearHighlight();
+    readBtn.setAttribute("aria-pressed","false");
+    readBtn.textContent = "Read aloud";
+  }
+  function speakNext(){
+    clearHighlight();
+    if(!reading || qi >= queue.length){ stopReading(); return; }
+    var el = queue[qi++];
+    var text = el.textContent.replace(/\s+/g," ").trim();
+    if(!text){ speakNext(); return; }
+    current = el; el.classList.add("speaking");
+    el.scrollIntoView({block:"center", behavior: prefs.rm ? "auto" : "smooth"});
+    var u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.95;
+    u.onend = speakNext;
+    u.onerror = function(){ stopReading(); };
+    synth.speak(u);
+  }
+  readBtn.addEventListener("click", function(){
+    if(!synth){ readBtn.textContent = "Not supported here"; readBtn.disabled = true; return; }
+    if(reading){ stopReading(); return; }
+    queue = $$("main h1, main h2, main h3, main p, main li").filter(function(el){
+      return el.offsetParent !== null && !el.closest("[hidden]") && !el.closest(".report-list");
+    });
+    qi = 0; reading = true;
+    readBtn.setAttribute("aria-pressed","true");
+    readBtn.textContent = "Stop reading";
+    speakNext();
+  });
+  window.addEventListener("pagehide", function(){ if(synth) synth.cancel(); });
+
+  /* ---------- Tabs ---------- */
+  var tabs = $$('[role="tab"]');
+  function selectTab(tab, focus){
+    tabs.forEach(function(t){
+      var on = t === tab;
+      t.setAttribute("aria-selected", String(on));
+      t.tabIndex = on ? 0 : -1;
+      $("#" + t.getAttribute("aria-controls")).hidden = !on;
+    });
+    if(focus) tab.focus();
+  }
+  tabs.forEach(function(t, i){
+    t.addEventListener("click", function(){ selectTab(t, false); });
+    t.addEventListener("keydown", function(e){
+      var n = null;
+      if(e.key === "ArrowRight") n = tabs[(i+1) % tabs.length];
+      else if(e.key === "ArrowLeft") n = tabs[(i-1+tabs.length) % tabs.length];
+      else if(e.key === "Home") n = tabs[0];
+      else if(e.key === "End") n = tabs[tabs.length-1];
+      if(n){ e.preventDefault(); selectTab(n, true); }
+    });
+  });
+
+  /* ---------- Simulator ---------- */
+  var stage = $("#sim-stage");
+  var fixBtn = $("#fix-btn");
+  var note = $("#sim-note");
+  function updateNote(){
+    var fixed = stage.classList.contains("fixed");
+    note.textContent = fixed
+      ? "Fixed: each status now has a word and a different shape, so it works without colour."
+      : "Colour is the only way to tell these statuses apart.";
+  }
+  $$('input[name="vision"]').forEach(function(r){
+    r.addEventListener("change", function(){ stage.style.filter = r.value === "none" ? "none" : r.value; });
+  });
+  fixBtn.addEventListener("click", function(){
+    var on = stage.classList.toggle("fixed");
+    fixBtn.setAttribute("aria-pressed", String(on));
+    fixBtn.textContent = on ? "Remove text and shapes" : "Add text and shapes";
+    updateNote();
+  });
+
+  /* ---------- Contrast checker ---------- */
+  function lum(hex){
+    var n = parseInt(hex.slice(1), 16);
+    var c = [(n>>16)&255, (n>>8)&255, n&255].map(function(v){
+      v /= 255; return v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4);
+    });
+    return 0.2126*c[0] + 0.7152*c[1] + 0.0722*c[2];
+  }
+  function ratioOf(a, b){
+    var la = lum(a), lb = lum(b);
+    var hi = Math.max(la, lb), lo = Math.min(la, lb);
+    return (hi + 0.05) / (lo + 0.05);
+  }
+  var fg = $("#fg"), bg = $("#bg");
+  function updateContrast(){
+    var r = ratioOf(fg.value, bg.value);
+    $("#ratio").textContent = (Math.floor(r*100)/100).toFixed(2) + ":1";
+    var tests = [
+      ["AA normal text", r >= 4.5],
+      ["AA large text", r >= 3],
+      ["AAA normal text", r >= 7],
+      ["AAA large text", r >= 4.5]
+    ];
+    var box = $("#badges"); box.textContent = "";
+    tests.forEach(function(t){
+      var s = document.createElement("span");
+      s.className = "badge " + (t[1] ? "pass" : "fail");
+      s.textContent = (t[1] ? "Pass" : "Fail") + " · " + t[0];
+      box.appendChild(s);
+    });
+    var sm = $("#sample");
+    sm.style.color = fg.value; sm.style.background = bg.value;
+  }
+  fg.addEventListener("input", updateContrast);
+  bg.addEventListener("input", updateContrast);
+  $("#swap").addEventListener("click", function(){ var t = fg.value; fg.value = bg.value; bg.value = t; updateContrast(); });
+  updateContrast();
+
+  /* ---------- Barrier reports ---------- */
+  var REPORTS_KEY = "accessable.reports.v1";
+  var reports = load(REPORTS_KEY, []);
+  if(!Array.isArray(reports)) reports = [];
+  var list = $("#report-list");
+
+  function renderReports(){
+    list.textContent = "";
+    if(!reports.length){
+      var li = document.createElement("li");
+      li.className = "empty";
+      li.textContent = "No reports yet. When you save one on the left, it appears here.";
+      list.appendChild(li);
+    }
+    reports.forEach(function(r, i){
+      var li = document.createElement("li");
+      var meta = document.createElement("div"); meta.className = "meta";
+      meta.textContent = r.type + " · " + r.date;
+      var title = document.createElement("strong"); title.textContent = r.where;
+      var body = document.createElement("p"); body.style.margin = ".3rem 0 0"; body.textContent = r.what;
+      var del = document.createElement("button"); del.type = "button"; del.className = "btn rm-btn"; del.textContent = "Delete";
+      del.setAttribute("aria-label", "Delete report about " + r.where);
+      del.addEventListener("click", function(){
+        reports.splice(i, 1); store(REPORTS_KEY, reports); renderReports();
+        $("#r-status").textContent = "Report deleted.";
+      });
+      li.appendChild(meta); li.appendChild(title); li.appendChild(body); li.appendChild(del);
+      list.appendChild(li);
+    });
+    $("#r-count").textContent = reports.length + " saved";
+  }
+  $("#report-form").addEventListener("submit", function(e){
+    e.preventDefault();
+    var where = $("#r-where"), what = $("#r-what"), status = $("#r-status");
+    status.style.color = "";
+    if(!where.value.trim() || !what.value.trim()){
+      status.style.color = "var(--bad)";
+      status.textContent = "Please fill in where it happened and what the problem was.";
+      (where.value.trim() ? what : where).focus();
+      return;
+    }
+    reports.unshift({
+      where: where.value.trim(), what: what.value.trim(), type: $("#r-type").value,
+      date: new Date().toLocaleDateString(undefined, {year:"numeric", month:"short", day:"numeric"})
+    });
+    store(REPORTS_KEY, reports);
+    where.value = ""; what.value = "";
+    status.textContent = "Report saved.";
+    renderReports();
+  });
+  $("#copy-reports").addEventListener("click", function(){
+    var status = $("#r-status");
+    if(!reports.length){ status.style.color = "var(--bad)"; status.textContent = "There is nothing to copy yet."; return; }
+    var text = reports.map(function(r){ return r.where + " (" + r.type + ", " + r.date + ")\n" + r.what; }).join("\n\n");
+    status.style.color = "";
+    function ok(){ status.textContent = "Copied to clipboard."; }
+    function fail(){ status.style.color = "var(--bad)"; status.textContent = "Copy was blocked. Select the reports and copy them by hand."; }
+    if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(ok, fail); } else { fail(); }
+  });
+  renderReports();
+
+  /* ---------- Builder checklist ---------- */
+  var CHECKS_KEY = "accessable.checks.v1";
+  var items = [
+    ["Every image has a useful alt text", "Decorative images use alt=\"\"."],
+    ["Text contrast is at least 4.5:1", "Use the checker above on your palette."],
+    ["Colour is never the only signal", "Pair it with text, icons or patterns."],
+    ["Everything works with a keyboard", "Tab through the page. Focus must always be visible."],
+    ["Videos have captions and a transcript", "Auto captions need a human check."],
+    ["Form fields have visible labels", "Placeholders are not labels. Errors say how to fix it."],
+    ["The page works at 200% zoom", "No horizontal scrolling, no clipped text."],
+    ["Motion can be paused or turned off", "Respect prefers-reduced-motion."]
+  ];
+  var done = load(CHECKS_KEY, []);
+  if(!Array.isArray(done)) done = [];
+  var checks = $("#checks");
+  function updateProgress(){
+    var n = done.length;
+    $("#progress").value = n;
+    $("#progress-text").textContent = n + " of " + items.length + " done" + (n === items.length ? ". Ready to ship." : "");
+  }
+  items.forEach(function(it, i){
+    var li = document.createElement("li");
+    var label = document.createElement("label");
+    var cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "chk-" + i; cb.checked = done.indexOf(i) > -1;
+    var box = document.createElement("span");
+    var b = document.createElement("b"); b.textContent = it[0];
+    var s = document.createElement("small"); s.textContent = it[1];
+    box.appendChild(b); box.appendChild(s);
+    label.appendChild(cb); label.appendChild(box); li.appendChild(label); checks.appendChild(li);
+    cb.addEventListener("change", function(){
+      done = done.filter(function(x){ return x !== i; });
+      if(cb.checked) done.push(i);
+      store(CHECKS_KEY, done); updateProgress();
+    });
+  });
+  updateProgress();
+})();
+</script>
+</body>
+</html>
